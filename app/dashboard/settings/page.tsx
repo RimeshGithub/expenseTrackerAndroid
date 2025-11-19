@@ -481,7 +481,7 @@ export default function SettingsPage() {
           <p className="text-muted-foreground">Manage your application preferences and data.</p>
         </div>
 
-        <div className="grid gap-6 max-w-xl">
+        <div className="grid gap-6 max-w-3xl">
           {isInitialized && (
             <Card>
               <CardHeader>

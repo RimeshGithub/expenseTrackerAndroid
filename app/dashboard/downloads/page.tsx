@@ -209,7 +209,7 @@ export default function DownloadsPage() {
         </div>
         
         {isMobile && (
-          <Card className="max-w-2xl">
+          <Card className="max-w-3xl">
             <CardHeader className="flex justify-between items-center">
               <div className="space-y-2">
                 <CardTitle className="flex items-center gap-2">

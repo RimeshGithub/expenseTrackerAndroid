@@ -105,14 +105,31 @@ export function AnalyticsDashboard() {
     }
   })
 
-  const categoryBreakdown = Object.entries(categoryMap).map(([categoryId, amount]) => {
-    const catInfo = [...expenseCategories, ...incomeCategories].find((c) => c.id === categoryId)
-    return {
-      category: catInfo?.name || categoryId,
-      amount,
-      color: catInfo?.color || "bg-gray-500",
+  const categoryBreakdown = (() => {
+    let totalIncome = 0;
+    let totalExpenses = 0;
+
+    for (const [categoryId, amount] of Object.entries(categoryMap)) {
+      const expenseCat = expenseCategories.find((c) => c.id === categoryId);
+      const incomeCat = incomeCategories.find((c) => c.id === categoryId);
+
+      if (expenseCat) totalExpenses += amount;
+      if (incomeCat) totalIncome += amount;
     }
-  })
+
+    return [
+      {
+        category: "Income",
+        amount: totalIncome,
+        color: "green"
+      },
+      {
+        category: "Expenses",
+        amount: totalExpenses,
+        color: "red"
+      }
+    ];
+  })();
 
   // top categories (by expense only)
   const expenseCategoriesTop = filteredTransactions.filter((t) => t.type === "expense")
@@ -306,17 +323,7 @@ export function AnalyticsDashboard() {
             <Card className="flex items-center">
               <CardHeader className="w-full">
                 <CardTitle>Income vs Expenses</CardTitle>
-                <CardDescription>Monthly comparison of your income and expenses</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <IncomeVsExpenseChart type={calendarType} data={monthlyTrend} />
-              </CardContent>
-            </Card>
-
-            <Card className="flex items-center">
-              <CardHeader className="w-full">
-                <CardTitle>Category Distribution</CardTitle>
-                <CardDescription>Visual breakdown of transaction proportions by category</CardDescription>
+                <CardDescription>Visual comparison of your income and expenses proportionally</CardDescription>
               </CardHeader>
               <CardContent>
                 {categoryBreakdown.length > 0 ? (
@@ -326,6 +333,16 @@ export function AnalyticsDashboard() {
                     No category data available
                   </div>
                 )}
+              </CardContent>
+            </Card>
+
+            <Card className="flex items-center">
+              <CardHeader className="w-full">
+                <CardTitle>Income vs Expenses</CardTitle>
+                <CardDescription>Monthly comparison of your income and expenses</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <IncomeVsExpenseChart type={calendarType} data={monthlyTrend} />
               </CardContent>
             </Card>
 
@@ -351,7 +368,7 @@ export function AnalyticsDashboard() {
         </TabsContent>
 
         <TabsContent value="categories" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-1 max-md:pr-160">
+          <div className="grid gap-4 md:grid-cols-1 max-md:pr-220">
             <Card className="flex items-center">
               <CardHeader className="w-full">
                 <CardTitle>Expense Categories</CardTitle>
