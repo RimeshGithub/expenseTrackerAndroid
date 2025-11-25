@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -31,7 +31,15 @@ function getStartDate(timeRange: string) {
 
 export function AnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState("3months")
+
   const [calendarType, setCalendarType] = useState<"ad" | "bs">("ad")
+  useEffect(() => {
+    const stored = localStorage.getItem("calendarTypeAnalytics")
+    if (stored !== null) {
+      setCalendarType(stored)
+    }
+  }, [])
+
   const { transactions, loading } = useTransactions()
   const { expenseCategories, incomeCategories } = useCategories()
 
@@ -240,7 +248,7 @@ export function AnalyticsDashboard() {
           <p className="text-muted-foreground">Detailed insights into your financial patterns and trends.</p>
         </div>
         <div className="flex gap-2">
-          <Select value={calendarType} onValueChange={(val: "ad" | "bs") => setCalendarType(val)}>
+          <Select value={calendarType} onValueChange={(val: "ad" | "bs") => {setCalendarType(val); localStorage.setItem("calendarTypeAnalytics", val)}}>
             <SelectTrigger className="w-[75px]">
               <SelectValue />
             </SelectTrigger>

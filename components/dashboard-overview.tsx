@@ -8,12 +8,20 @@ import { useTransactions } from "@/hooks/use-transactions"
 import { useCategories } from "@/hooks/use-categories"
 import { format } from "date-fns"
 import NepaliDate from "nepali-date-converter"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { getCurrency } from "@/hooks/use-currency"
 
 export function DashboardOverview() {
+
   const { transactions, loading } = useTransactions()
+
   const [calendarMode, setCalendarMode] = useState<"ad" | "bs">("ad")
+  useEffect(() => {
+    const stored = localStorage.getItem("calendarModeDashboard")
+    if (stored !== null) {
+      setCalendarMode(stored)
+    }
+  }, [])
 
   const { expenseCategories, incomeCategories } = useCategories()
 
@@ -116,13 +124,13 @@ export function DashboardOverview() {
         <div className="flex items-center gap-2">
           <Button
             variant={calendarMode === "ad" ? "default" : "outline"}
-            onClick={() => setCalendarMode("ad")}
+            onClick={() => {setCalendarMode("ad"); localStorage.setItem("calendarModeDashboard", "ad")}}
           >
             AD
           </Button>
           <Button
             variant={calendarMode === "bs" ? "default" : "outline"}
-            onClick={() => setCalendarMode("bs")}
+            onClick={() => {setCalendarMode("bs"); localStorage.setItem("calendarModeDashboard", "bs")}}
           >
             BS
           </Button>

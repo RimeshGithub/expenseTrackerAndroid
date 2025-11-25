@@ -1,16 +1,27 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Home, Plus, TrendingUp, Settings, Download, Menu, Wallet, PieChart, Cloud, CloudOff } from "lucide-react"
+import {
+  Home,
+  Plus,
+  TrendingUp,
+  Settings,
+  Download,
+  Menu,
+  Wallet,
+  PieChart,
+  Cloud,
+  CloudOff,
+} from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useFirebaseAuth } from "@/hooks/use-firebase-auth"
 import { useFirebaseSync } from "@/hooks/use-firebase-sync"
+import { useSidebarStore } from "@/hooks/use-sidebar-store"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -27,10 +38,13 @@ const navigation = [
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const { isOpen, open, close } = useSidebarStore()
+
   const { user, setupAuthListener } = useFirebaseAuth()
   const { isSyncing, isOnline } = useFirebaseSync(user?.uid || null)
 
+  // Firebase auth listener
   useEffect(() => {
     const unsubscribe = setupAuthListener()
     return () => {
@@ -39,20 +53,20 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }, [setupAuthListener])
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
-    <div className={cn("flex flex-col h-full", mobile ? "py-4" : "")}>
+    <div className={cn("flex flex-col h-full overflow-auto", mobile ? "py-4" : "")}>
       <div className="flex items-center gap-2 px-4 py-6">
         <TrendingUp className="h-8 w-8 text-primary" />
         <span className="text-xl font-bold">ExpenseTracker</span>
       </div>
 
-      <nav className="flex-1 px-4 space-y-2">
+      <nav className="flex-1 px-4 space-y-2 mb-5">
         {navigation.map((item) => {
           const isActive = pathname === item.href
           return (
             <Link
               key={item.name}
               href={item.href}
-              onClick={() => mobile && setSidebarOpen(false)}
+              onClick={() => mobile && close()}
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                 isActive
@@ -105,8 +119,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </div>
 
       {/* Mobile Sidebar */}
-      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <SheetContent side="left" className="p-0 w-64">
+      <Sheet open={isOpen} onOpenChange={(v) => (v ? open() : close())}>
+        <SheetContent side="left" className="p-0 w-64 pt-8">
           <Sidebar mobile />
         </SheetContent>
       </Sheet>
@@ -114,11 +128,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile Header */}
-        <div className="lg:hidden flex items-center justify-between p-4 border-b bg-card">
-          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <div className="lg:hidden flex items-center justify-between p-2 border-b bg-card max-sm:pt-10">
+          <Sheet open={isOpen} onOpenChange={(v) => (v ? open() : close())}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <Menu className="h-5 w-5" />
+              <Button variant="ghost" onClick={open} className="h-12 w-12">
+                <Menu className="h-10 w-10" />
               </Button>
             </SheetTrigger>
           </Sheet>
@@ -130,7 +144,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-auto p-4 lg:p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-4 lg:p-6">
+          {children}
+        </main>
       </div>
     </div>
   )

@@ -72,7 +72,15 @@ export default function SettingsPage() {
 
   // Transaction filters for export
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([])
+
   const [useBSDate, setUseBSDate] = useState(false) // Toggle between AD/BS
+  useEffect(() => {
+    const stored = localStorage.getItem("useBSDateExport")
+    if (stored !== null) {
+      setUseBSDate(JSON.parse(stored))
+    }
+  }, [])
+
   const [filterYear, setFilterYear] = useState(todayADYear.toString())
   const [filterMonth, setFilterMonth] = useState(todayADMonth.toString())
   
@@ -275,18 +283,38 @@ export default function SettingsPage() {
         .toString().padStart(2,"0")}`
 
       if (format === "csv") {
-        const headers = ["Date", "Type", "Category", "Amount", "Description"]
+        const headers = ["Date", "Type", "Category", "Income", "Expense", "Balance", "Description"]
+        let runningBalance = 0
+        let totalIncome = 0
+        let totalExpense = 0
+
         const csvContent = [
           headers.join(","),
-          ...filtered.map((t) =>
-            [
+
+          ...filtered.map((t) => {
+            const isIncome = t.type.toLowerCase() === "income"
+            const income = isIncome ? t.amount : ""
+            const expense = !isIncome ? t.amount : ""
+
+            // Update running balance
+            runningBalance += isIncome ? t.amount : -t.amount
+
+            // Update total income and expense
+            totalIncome += isIncome ? t.amount : 0
+            totalExpense += !isIncome ? t.amount : 0
+
+            return [
               customDateFormat(t.date),
               t.type,
               getCategoryName(t.category),
-              t.amount.toString(),
+              income,
+              expense,
+              runningBalance,
               `"${t.description.replace(/"/g, '""')}"`,
             ].join(",")
-          ),
+          }),
+
+          ["", "", "Total", totalIncome, totalExpense, runningBalance, ""],
         ].join("\n")
 
         content = csvContent
@@ -673,7 +701,7 @@ export default function SettingsPage() {
                       <Switch
                         id="calendar-toggle"
                         checked={useBSDate}
-                        onCheckedChange={setUseBSDate}
+                        onCheckedChange={(checked) => {setUseBSDate(checked); localStorage.setItem("useBSDateExport", checked.toString())}}
                       />
                       <Label htmlFor="calendar-toggle" className="text-sm whitespace-nowrap cursor-pointer">
                         BS
@@ -842,14 +870,19 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className="text-sm font-medium">Storage</Label>
+                <Label className="text-sm font-bold">Storage</Label>
                 <p className="text-sm text-muted-foreground">
                   Data is stored locally in your device with optional cloud backup
                 </p>
               </div>
               <div>
-                <Label className="text-sm font-medium">App Version</Label>
-                <p className="text-sm text-muted-foreground">v1.0</p>
+                <Label className="text-sm font-bold">Developer</Label>
+                <p className="text-sm text-muted-foreground">Rimesh Bir Singh</p>
+                <p className="text-sm text-muted-foreground">Contact: developer2061@outlook.com</p>
+              </div>
+              <div>
+                <Label className="text-sm font-bold">App Version</Label>
+                <p className="text-sm text-muted-foreground">v1.0.0</p>
               </div>
             </CardContent>
           </Card>

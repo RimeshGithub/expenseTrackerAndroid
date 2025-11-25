@@ -24,6 +24,13 @@ export function ReportGenerator({ transactions }: { transactions: Transaction[] 
   const todayBSMonth = todayBS.month
   
   const [useBSDate, setUseBSDate] = useState(false) // Toggle between AD/BS
+  useEffect(() => {
+    const stored = localStorage.getItem("useBSDateReport")
+    if (stored !== null) {
+      setUseBSDate(JSON.parse(stored))
+    }
+  }, [])
+
   const [selectedYear, setSelectedYear] = useState(todayADYear.toString())
   const [selectedMonth, setSelectedMonth] = useState(todayADMonth.toString())
 
@@ -93,7 +100,7 @@ export function ReportGenerator({ transactions }: { transactions: Transaction[] 
               <Switch
                 id="calendar-toggle"
                 checked={useBSDate}
-                onCheckedChange={setUseBSDate}
+                onCheckedChange={(checked) => {setUseBSDate(checked); localStorage.setItem("useBSDateReport", JSON.stringify(checked))}}
               />
               <Label htmlFor="calendar-toggle" className="text-sm whitespace-nowrap cursor-pointer">
                 BS

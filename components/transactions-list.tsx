@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast"
 import type { Category } from "@/lib/types"
 import { Capacitor } from "@capacitor/core"
 import { Filesystem, Directory, Encoding } from "@capacitor/filesystem"
+import { useEditFormStore } from "@/hooks/use-editform-store"
 
 export function TransactionsList() {
   const { transactions, loading, deleteTransaction } = useTransactions()
@@ -49,9 +50,17 @@ export function TransactionsList() {
 
   // Date filter state
   const [useBSDate, setUseBSDate] = useState(false) // Toggle between AD/BS
+  useEffect(() => {
+    const stored = localStorage.getItem("useBSDate")
+    if (stored !== null) {
+      setUseBSDate(JSON.parse(stored))
+    }
+  }, [])
+
   const [filterYear, setFilterYear] = useState(todayADYear.toString())
   const [filterMonth, setFilterMonth] = useState(todayADMonth.toString())
 
+  const { isFormOpen, openForm, closeForm } = useEditFormStore()
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [sortAsc, setSortAsc] = useState(false)
 
@@ -139,6 +148,12 @@ export function TransactionsList() {
     }
   }, [useBSDate, sortAsc])
 
+  useEffect(() => {
+    if (!isFormOpen) {
+      setEditingTransaction(null)
+    }
+  }, [isFormOpen])
+
   const getCategoryInfo = (categoryId: string, type: "expense" | "income") => {
     const categories = type === "expense" ? expenseCategories : incomeCategories
     return categories.find((c) => c.id === categoryId) || { name: categoryId, icon: "📦", color: "bg-gray-500" }
@@ -187,18 +202,38 @@ export function TransactionsList() {
         .toString().padStart(2,"0")}`
 
       if (format === "csv") {
-        const headers = ["Date", "Type", "Category", "Amount", "Description"]
+        const headers = ["Date", "Type", "Category", "Income", "Expense", "Balance", "Description"]
+        let runningBalance = 0
+        let totalIncome = 0
+        let totalExpense = 0
+
         const csvContent = [
           headers.join(","),
-          ...filteredYearMonths.map((t) =>
-            [
+
+          ...filteredYearMonths.map((t) => {
+            const isIncome = t.type.toLowerCase() === "income"
+            const income = isIncome ? t.amount : ""
+            const expense = !isIncome ? t.amount : ""
+
+            // Update running balance
+            runningBalance += isIncome ? t.amount : -t.amount
+
+            // Update total income and expense
+            totalIncome += isIncome ? t.amount : 0
+            totalExpense += !isIncome ? t.amount : 0
+
+            return [
               customDateFormat(t.date),
               t.type,
               getCategoryName(t.category),
-              t.amount.toString(),
+              income,
+              expense,
+              runningBalance,
               `"${t.description.replace(/"/g, '""')}"`,
             ].join(",")
-          ),
+          }),
+
+          ["", "", "Total", totalIncome, totalExpense, runningBalance, ""],
         ].join("\n")
 
         content = csvContent
@@ -314,7 +349,7 @@ export function TransactionsList() {
       <Card className="shadow-sm border">
         <CardContent className="px-4">
           {/* Main Filter Row */}
-          <div className="flex gap-5 mb-4 p-3 rounded-lg border max-md:flex-col max-md:gap-3 max-md:items-center">
+          <div className="flex gap-5 p-3 rounded-lg border max-md:flex-col max-md:gap-3 max-md:items-center">
             {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -325,9 +360,9 @@ export function TransactionsList() {
                 className="pl-10 border-border shadow-none bg-background text-sm"
               />
             </div>
-
+            
             {/* Type Filter */}
-            <div className="flex items-center gap-2 max-sm:gap-1">
+            <div className={`flex items-center gap-2 max-sm:gap-1 ${searchTerm ? "max-md:hidden" : ""}`}>
               <Label htmlFor="type-filter" className="text-sm font-medium whitespace-nowrap">
                 Type
               </Label>
@@ -344,7 +379,7 @@ export function TransactionsList() {
             </div>
 
             {/* Category Filter */}
-            <div className="flex items-center gap-2 max-sm:gap-1">
+            <div className={`flex items-center gap-2 max-sm:gap-1 ${searchTerm ? "max-md:hidden" : ""}`}>
               <Label htmlFor="category-filter" className="text-sm font-medium whitespace-nowrap">
                 Category
               </Label>
@@ -390,7 +425,7 @@ export function TransactionsList() {
           </div>
           
           {/* Date Filter Section */}
-          <div className="flex gap-5 bg-muted/30 p-3 rounded-lg border items-center justify-center max-xl:flex-col max-xl:gap-3 max-xl:items-center">
+          <div className={`mt-4 flex gap-5 bg-muted/30 p-3 rounded-lg border items-center justify-center max-xl:flex-col max-xl:gap-3 max-xl:items-center ${searchTerm ? "max-md:hidden" : ""}`}>
             <div className="flex max-md:flex-col justify-center items-center gap-3">
               {/* Calendar Toggle */}
               <div className="flex items-center gap-2 max-sm:gap-1">
@@ -404,7 +439,7 @@ export function TransactionsList() {
                   <Switch
                     id="calendar-toggle"
                     checked={useBSDate}
-                    onCheckedChange={setUseBSDate}
+                    onCheckedChange={(checked) => {setUseBSDate(checked); localStorage.setItem('useBSDate', checked.toString())}}
                   />
                   <Label htmlFor="calendar-toggle" className="text-sm whitespace-nowrap cursor-pointer">
                     BS
@@ -575,7 +610,7 @@ export function TransactionsList() {
       )}
 
       {/* Transactions */}
-      <div className="flex items-center gap-4 px-3">
+      <div className={`flex items-center gap-4 px-3 ${searchTerm ? "max-md:hidden" : ""}`}>
         <h1 className="text-2xl font-bold">Transactions List</h1>
         <Button variant="outline" onClick={() => setSortAsc(!sortAsc)}>
           {sortAsc ? <SortDesc className="h-4 w-4" /> : <SortAsc className="h-4 w-4" />}
@@ -590,7 +625,7 @@ export function TransactionsList() {
             const bs = new NepaliDate(new Date(t.date)).getBS()
             return (
               <Card key={t.id}>
-                <CardContent className="p-6 flex justify-between items-center max-sm:flex-col max-sm:gap-3.5">
+                <CardContent className="p-6 py-0 flex justify-between items-center max-sm:flex-col max-sm:gap-3.5">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-full ${cat.color} flex items-center justify-center text-black font-bold text-2xl`}>
@@ -614,7 +649,7 @@ export function TransactionsList() {
                         <Button variant="ghost" size="sm"><MoreHorizontal className="h-4 w-4" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setEditingTransaction(t)}>
+                        <DropdownMenuItem onClick={() => {setEditingTransaction(t); openForm()}}>
                           <Edit className="mr-2 h-4 w-4 hover:text-white" /> Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleDelete(t.id)} className="text-red-600">
@@ -631,7 +666,7 @@ export function TransactionsList() {
       </div>
 
       {/* Edit Dialog */}
-      <Dialog open={!!editingTransaction} onOpenChange={() => setEditingTransaction(null)}>
+      <Dialog open={!!editingTransaction} onOpenChange={() => {setEditingTransaction(null); closeForm()}}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Transaction</DialogTitle>
